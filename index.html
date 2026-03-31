@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meeting Prepper</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { background: #080c14; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    * { box-sizing: border-box; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.35s ease forwards; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Change this to your Vercel URL once deployed, e.g. "https://meeting-prepper.vercel.app"
+    const API_BASE = window.location.hostname === "localhost" ? "http://localhost:5001" : "";
+
+    const LOADING_STEPS = [
+      "Scanning LinkedIn activity…",
+      "Pulling recent articles and posts…",
+      "Enriching company data…",
+      "Analysing Instagram presence…",
+      "Running bias framework…",
+      "Building conversation cascades…",
+      "Assembling your brief…",
+    ];
+
+    // ── Shared UI ──────────────────────────────────────────────────────────────
+    const Badge = ({ label, color = "indigo" }) => {
+      const colors = {
+        indigo:  { bg: "rgba(99,102,241,0.15)",  text: "#a5b4fc", border: "rgba(99,102,241,0.3)"  },
+        amber:   { bg: "rgba(245,158,11,0.15)",  text: "#fcd34d", border: "rgba(245,158,11,0.3)"  },
+        emerald: { bg: "rgba(16,185,129,0.15)",  text: "#6ee7b7", border: "rgba(16,185,129,0.3)"  },
+        red:     { bg: "rgba(239,68,68,0.15)",   text: "#fca5a5", border: "rgba(239,68,68,0.3)"   },
+        slate:   { bg: "rgba(100,116,139,0.2)",  text: "#94a3b8", border: "rgba(100,116,139,0.3)" },
+        cyan:    { bg: "rgba(6,182,212,0.15)",   text: "#67e8f9", border: "rgba(6,182,212,0.3)"   },
+      };
+      const c = colors[color] || colors.indigo;
+      return (
+        <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 500, display: "inline-flex", alignItems: "center" }}>
+          {label}
+        </span>
+      );
+    };
+
+    const SectionCard = ({ title, icon, accentColor = "#6366f1", children, tag }) => (
+      <div style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)", overflow: "hidden", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", borderLeft: `3px solid ${accentColor}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 15 }}>{icon}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", letterSpacing: "0.02em" }}>{title}</span>
+          </div>
+          {tag && <Badge label={tag} color="slate" />}
+        </div>
+        <div style={{ padding: "16px 20px" }}>{children}</div>
+      </div>
+    );
+
+    // ── Screen 1: Form ─────────────────────────────────────────────────────────
+    const FormScreen = ({ onSubmit }) => {
+      const [meetingType, setMeetingType] = useState("Sales Pitch");
+      const [timeAvail,   setTimeAvail]   = useState("24hr");
+      const [isFollowUp,  setIsFollowUp]  = useState(false);
+      const [name,        setName]        = useState("");
+      const [company,     setCompany]     = useState("");
+      const [role,        setRole]        = useState("");
+      const [linkedin,    setLinkedin]    = useState("");
+      const [instagram,   setInstagram]   = useState("");
+      const [website,     setWebsite]     = useState("");
+      const [context,     setContext]     = useState("");
+      const [prevAttendees, setPrevAttendees] = useState("");
+      const [prevAnchored,  setPrevAnchored]  = useState("");
+
+      const optionalFilled = [linkedin, instagram, website].filter(Boolean).length;
+      const completePct = Math.round(([name, company].filter(Boolean).length / 2) * 60 + (optionalFilled / 3) * 40);
+      const barColor = completePct >= 80 ? "#10b981" : completePct >= 50 ? "#f59e0b" : "#6366f1";
+
+      const TYPES = ["Sales Pitch", "Investor Meeting", "Partnership", "Job Interview"];
+      const EMOJIS = { "Sales Pitch": "💼", "Investor Meeting": "📈", "Partnership": "🤝", "Job Interview": "🎯" };
+      const TIMES  = [
+        { v: "5min",  l: "< 5 min",  s: "Quick Fire"  },
+        { v: "1hr",   l: "1–4 hrs",  s: "Focused"     },
+        { v: "8hr",   l: "4–12 hrs", s: "Strategic"   },
+        { v: "24hr",  l: "24+ hrs",  s: "Full Intel"  },
+      ];
+
+      const inputStyle = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#e2e8f0", outline: "none", fontFamily: "inherit" };
+      const labelStyle = { fontSize: 11, fontWeight: 500, color: "#94a3b8", marginBottom: 6, display: "block" };
+      const canGenerate = name.trim() && company.trim();
+
+      const handleSubmit = () => {
+        if (!canGenerate) return;
+        onSubmit({ name, company, role, linkedin, instagram, website, context, meetingType, timeAvail, isFollowUp, prevAttendees, prevAnchored });
+      };
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#080c14", color: "#fff" }}>
+          {/* Header */}
+          <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧠</div>
+              <span style={{ fontWeight: 700, color: "#fff", letterSpacing: "-0.02em", fontSize: 15 }}>Meeting Prepper</span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "center", padding: "40px 16px" }}>
+            <div style={{ width: "100%", maxWidth: 520 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fff", letterSpacing: "-0.03em", margin: "0 0 4px" }}>New Meeting Brief</h1>
+              <p style={{ fontSize: 13, color: "#475569", margin: "0 0 28px" }}>Build your intelligence dossier before you walk in the room.</p>
+
+              {/* Meeting Type */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={labelStyle}>Meeting Type</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+                  {TYPES.map(t => (
+                    <button key={t} onClick={() => setMeetingType(t)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 8px", borderRadius: 12, border: `1px solid ${meetingType === t ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.07)"}`, background: meetingType === t ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.025)", color: meetingType === t ? "#a5b4fc" : "#94a3b8", fontSize: 11, fontWeight: 500, cursor: "pointer" }}>
+                      <span style={{ fontSize: 18 }}>{EMOJIS[t]}</span>{t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Time Available */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={labelStyle}>Time Available to Prepare</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+                  {TIMES.map(t => (
+                    <button key={t.v} onClick={() => setTimeAvail(t.v)} style={{ padding: "12px 8px", borderRadius: 12, textAlign: "center", cursor: "pointer", border: `1px solid ${timeAvail === t.v ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.07)"}`, background: timeAvail === t.v ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.025)" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: timeAvail === t.v ? "#a5b4fc" : "#cbd5e1" }}>{t.l}</div>
+                      <div style={{ fontSize: 10, marginTop: 2, color: timeAvail === t.v ? "rgba(165,180,252,0.7)" : "#475569" }}>{t.s}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Person Info */}
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 20, marginBottom: 16 }}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 16px" }}>Person Info</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                  <div><label style={labelStyle}>Full Name <span style={{ color: "#a5b4fc" }}>*</span></label><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Arjun Mehta" /></div>
+                  <div><label style={labelStyle}>Company <span style={{ color: "#a5b4fc" }}>*</span></label><input style={inputStyle} value={company} onChange={e => setCompany(e.target.value)} placeholder="Kintsugi Labs" /></div>
+                </div>
+                <div style={{ marginBottom: 12 }}><label style={labelStyle}>Role / Title <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label><input style={inputStyle} value={role} onChange={e => setRole(e.target.value)} placeholder="Co-founder & CEO" /></div>
+                <div style={{ marginBottom: 12 }}><label style={labelStyle}>LinkedIn URL <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label><input style={inputStyle} value={linkedin} onChange={e => setLinkedin(e.target.value)} placeholder="linkedin.com/in/username" /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                  <div><label style={labelStyle}>Instagram URL <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label><input style={inputStyle} value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="instagram.com/username" /></div>
+                  <div><label style={labelStyle}>Company Website <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label><input style={inputStyle} value={website} onChange={e => setWebsite(e.target.value)} placeholder="kintsugi.com" /></div>
+                </div>
+                {/* Quality bar */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>Research quality</span>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: barColor }}>{completePct >= 80 ? "Excellent" : completePct >= 50 ? "Good" : "Basic"} · {completePct}%</span>
+                  </div>
+                  <div style={{ height: 5, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${completePct}%`, background: barColor, borderRadius: 99, transition: "width 0.4s ease" }} />
+                  </div>
+                  {optionalFilled < 3 && <p style={{ fontSize: 11, color: "#475569", marginTop: 6 }}>Add LinkedIn, Instagram, or website for richer analysis.</p>}
+                </div>
+              </div>
+
+              {/* Meeting Context */}
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 20, marginBottom: 20 }}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 16px" }}>Meeting Context</p>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {["First Meeting", "Follow-up"].map(opt => {
+                    const active = isFollowUp ? opt === "Follow-up" : opt === "First Meeting";
+                    return <button key={opt} onClick={() => setIsFollowUp(opt === "Follow-up")} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${active ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.07)"}`, background: active ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.025)", color: active ? "#a5b4fc" : "#94a3b8", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>{opt === "First Meeting" ? "🆕 First Meeting" : "🔁 Follow-up"}</button>;
+                  })}
+                </div>
+                {isFollowUp && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ marginBottom: 12 }}><label style={labelStyle}>Who attended last time?</label><input style={inputStyle} value={prevAttendees} onChange={e => setPrevAttendees(e.target.value)} placeholder="e.g. Arjun + his Head of Growth" /></div>
+                    <div><label style={labelStyle}>What did you anchor on last time?</label><input style={inputStyle} value={prevAnchored} onChange={e => setPrevAnchored(e.target.value)} placeholder="e.g. Their bottleneck in scaling outbound" /></div>
+                  </div>
+                )}
+                <div><label style={labelStyle}>Additional context <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label>
+                  <textarea value={context} onChange={e => setContext(e.target.value)} placeholder="e.g. Introduced by a mutual contact. He mentioned pricing was a concern previously." rows={3} style={{ ...inputStyle, resize: "none" }} />
+                </div>
+              </div>
+
+              <button onClick={handleSubmit} disabled={!canGenerate} style={{ width: "100%", padding: "15px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: canGenerate ? "pointer" : "default", background: canGenerate ? "#4f46e5" : "rgba(255,255,255,0.04)", color: canGenerate ? "#fff" : "#475569", border: canGenerate ? "none" : "1px solid rgba(255,255,255,0.06)", boxShadow: canGenerate ? "0 4px 24px rgba(99,102,241,0.25)" : "none" }}>
+                {canGenerate ? "🧠 Generate Meeting Brief" : "Enter name & company to continue"}
+              </button>
+              <p style={{ textAlign: "center", fontSize: 11, color: "#334155", marginTop: 10 }}>Research takes ~20–40 seconds depending on data availability.</p>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ── Screen 2: Loading ──────────────────────────────────────────────────────
+    const LoadingScreen = ({ error }) => {
+      const [step, setStep] = useState(0);
+
+      useEffect(() => {
+        if (error || step >= LOADING_STEPS.length) return;
+        const t = setTimeout(() => setStep(s => s + 1), 800);
+        return () => clearTimeout(t);
+      }, [step, error]);
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#080c14", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
+            <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, margin: "0 auto 20px" }}>
+              {error ? "⚠️" : "🧠"}
+            </div>
+            {error ? (
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: "0 0 8px" }}>Something went wrong</h2>
+                <p style={{ fontSize: 13, color: "#ef4444", margin: "0 0 4px" }}>{error}</p>
+                <p style={{ fontSize: 12, color: "#475569" }}>Check your API keys in .env and try again.</p>
+              </div>
+            ) : (
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: "0 0 6px", letterSpacing: "-0.02em" }}>Building your brief…</h2>
+                <p style={{ fontSize: 13, color: "#475569", margin: "0 0 32px" }}>Scanning public data and running analysis.</p>
+                <div style={{ textAlign: "left", marginBottom: 24 }}>
+                  {LOADING_STEPS.map((s, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, opacity: i < step ? 1 : 0.2, transition: "opacity 0.3s" }}>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 10, background: i < step ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.04)", color: i < step ? "#34d399" : "#475569", border: `1px solid ${i < step ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.06)"}` }}>
+                        {i < step ? "✓" : "·"}
+                      </div>
+                      <span style={{ fontSize: 13, color: i < step ? "#cbd5e1" : "#475569" }}>{s}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ height: 4, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden" }}>
+                  <div style={{ height: "100%", background: "#6366f1", borderRadius: 99, width: `${(step / LOADING_STEPS.length) * 100}%`, transition: "width 0.6s ease" }} />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // ── Screen 3: Brief ────────────────────────────────────────────────────────
+    const BriefScreen = ({ brief, inputs, onReset }) => {
+      const [view, setView] = useState(inputs?.timeAvail === "5min" ? "quick" : "full");
+
+      const urgencyMap = {
+        hot:    { dot: "#f87171", label: "Hot signal", badge: "red"    },
+        medium: { dot: "#fbbf24", label: "Noteworthy", badge: "amber"  },
+        watch:  { dot: "#94a3b8", label: "Watch",      badge: "slate"  },
+      };
+
+      const p = brief.person || {};
+      const qualityColor = brief.data_quality === "high" ? "#34d399" : brief.data_quality === "medium" ? "#fbbf24" : "#94a3b8";
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#080c14", color: "#fff" }}>
+          {/* Sticky top bar */}
+          <div style={{ position: "sticky", top: 0, zIndex: 20, borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(8,12,20,0.95)", backdropFilter: "blur(12px)", padding: "10px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button onClick={onReset} style={{ fontSize: 12, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: 0 }}>← New Brief</button>
+              <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)" }} />
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#a5b4fc" }}>{p.initials || "?"}</div>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{p.name}</span>
+                <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>{p.role} · {p.company}</span>
+              </div>
+              <Badge label={brief.meetingType || inputs?.meetingType} color="indigo" />
+              <span style={{ fontSize: 11, color: qualityColor }}>● {brief.data_quality} quality</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 3 }}>
+                {[{ v: "quick", l: "⚡ Quick Fire" }, { v: "full", l: "📋 Full Brief" }].map(({ v, l }) => (
+                  <button key={v} onClick={() => setView(v)} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: "pointer", border: "none", background: view === v ? "rgba(99,102,241,0.2)" : "transparent", color: view === v ? "#a5b4fc" : "#64748b" }}>{l}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ maxWidth: 700, margin: "0 auto", padding: "32px 24px" }}>
+
+            {/* ── Quick Fire ── */}
+            {view === "quick" && (
+              <div className="fade-in">
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: "0 0 4px" }}>⚡ Quick Fire Brief</h2>
+                <p style={{ fontSize: 12, color: "#475569", margin: "0 0 20px" }}>The {(brief.quick_fire || []).length} things that matter most before you walk in.</p>
+                <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.18)", borderRadius: 14, padding: 20, marginBottom: 16 }}>
+                  {(brief.quick_fire || []).map((item, i) => (
+                    <div key={i} style={{ display: "flex", gap: 12, marginBottom: i < (brief.quick_fire.length - 1) ? 14 : 0 }}>
+                      <span style={{ color: "#fbbf24", fontWeight: 700, fontSize: 13, width: 20, flexShrink: 0 }}>{i + 1}.</span>
+                      <p style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.6, margin: 0 }}>{item}</p>
+                    </div>
+                  ))}
+                </div>
+                {(brief.cascades || []).length > 0 && (
+                  <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 20 }}>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 10px" }}>Best opening question</p>
+                    <p style={{ fontSize: 13, color: "#e2e8f0", fontStyle: "italic", lineHeight: 1.65, margin: "0 0 10px" }}>{brief.cascades[0].opening}</p>
+                    <p style={{ fontSize: 12, color: "#64748b", margin: 0, lineHeight: 1.5 }}>{brief.cascades[0].thread}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Full Brief ── */}
+            {view === "full" && (
+              <div className="fade-in">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+                  <div>
+                    <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: "0 0 4px" }}>Full Intel Brief</h2>
+                    <p style={{ fontSize: 12, color: "#475569", margin: 0 }}>Pre-meeting dossier · {brief.meetingType}</p>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 11, color: "#334155" }}>Generated</div>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>Today · {inputs?.timeAvail} mode</div>
+                  </div>
+                </div>
+
+                {/* 1. Confirmation Bias */}
+                {(brief.confirmation_bias || []).length > 0 && (
+                  <SectionCard title="Confirmation Bias Intersections" icon="🤝" accentColor="#6366f1" tag="Priority 1">
+                    {brief.confirmation_bias.map((item, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < brief.confirmation_bias.length - 1 ? 14 : 0 }}>
+                        <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: item.strength === "high" ? "#34d399" : item.strength === "medium" ? "#fbbf24" : "#94a3b8", flexShrink: 0, marginTop: 5 }} />
+                        <div>
+                          <p style={{ fontSize: 13, color: "#e2e8f0", margin: "0 0 5px", lineHeight: 1.5 }}>{item.label}</p>
+                          <Badge label={item.type} color={item.type === "Region" ? "cyan" : item.type === "Sports" ? "amber" : item.type === "Education" ? "indigo" : "emerald"} />
+                        </div>
+                      </div>
+                    ))}
+                  </SectionCard>
+                )}
+
+                {/* 2. Recency Signals */}
+                {(brief.recency_signals || []).length > 0 && (
+                  <SectionCard title="Recency Signals" icon="📡" accentColor="#f59e0b" tag="Priority 2">
+                    {brief.recency_signals.map((item, i) => {
+                      const s = urgencyMap[item.urgency] || urgencyMap.watch;
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < brief.recency_signals.length - 1 ? 14 : 0 }}>
+                          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: s.dot, flexShrink: 0, marginTop: 5 }} />
+                          <p style={{ fontSize: 13, color: "#e2e8f0", margin: 0, lineHeight: 1.5, flex: 1 }}>{item.signal}</p>
+                          <Badge label={s.label} color={s.badge} />
+                        </div>
+                      );
+                    })}
+                  </SectionCard>
+                )}
+
+                {/* 3. Authority Anchors */}
+                {(brief.authority_anchors || []).length > 0 && (
+                  <SectionCard title="Authority Anchors" icon="⭐" accentColor="#8b5cf6" tag="Priority 3">
+                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px", lineHeight: 1.5 }}>Who they publicly respect. Drop these names to signal shared vocabulary — not to show off.</p>
+                    {brief.authority_anchors.map((a, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < brief.authority_anchors.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: "#e2e8f0" }}>{a.name}</span>
+                        <span style={{ fontSize: 12, color: "#64748b", fontStyle: "italic" }}>{a.theme}</span>
+                      </div>
+                    ))}
+                  </SectionCard>
+                )}
+
+                {/* 4. In-Group Markers */}
+                {(brief.ingroup_markers || []).length > 0 && (
+                  <SectionCard title="In-Group / Tribal Markers" icon="🏛️" accentColor="#06b6d4" tag="Priority 4">
+                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px", lineHeight: 1.5 }}>Shared identity signals. These build trust faster than any pitch.</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {brief.ingroup_markers.map((m, i) => (
+                        <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#cbd5e1" }}>{m}</div>
+                      ))}
+                    </div>
+                  </SectionCard>
+                )}
+
+                {/* 5. Loss Aversion */}
+                {(brief.loss_aversion || []).length > 0 && (
+                  <SectionCard title="Loss Aversion Framing" icon="⚠️" accentColor="#ef4444" tag="Priority 5">
+                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 14px", lineHeight: 1.5 }}>What they're afraid of losing. Frame your offer around protecting these.</p>
+                    {brief.loss_aversion.map((item, i) => (
+                      <div key={i} style={{ borderLeft: "2px solid rgba(239,68,68,0.3)", paddingLeft: 12, marginBottom: i < brief.loss_aversion.length - 1 ? 16 : 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 500, color: "#e2e8f0", margin: "0 0 4px", lineHeight: 1.5 }}>{item.fear}</p>
+                        <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>→ {item.implication}</p>
+                      </div>
+                    ))}
+                  </SectionCard>
+                )}
+
+                {/* 6. Conversation Cascades */}
+                {(brief.cascades || []).length > 0 && (
+                  <SectionCard title="Conversation Cascades" icon="💬" accentColor="#10b981">
+                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 16px", lineHeight: 1.5 }}>Research-rooted opening questions that lead naturally to your pitch angle.</p>
+                    {brief.cascades.map((c, i) => (
+                      <div key={c.id} style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 16, marginBottom: i < brief.cascades.length - 1 ? 12 : 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "#34d399", textTransform: "uppercase", letterSpacing: "0.08em" }}>Cascade {c.id} · {c.seed}</span>
+                          <Badge label={c.strength === "high" ? "Strong angle" : "Good opener"} color={c.strength === "high" ? "emerald" : "amber"} />
+                        </div>
+                        <div style={{ marginBottom: 10 }}>
+                          <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 6px" }}>Opening question</p>
+                          <p style={{ fontSize: 13, color: "#e2e8f0", fontStyle: "italic", lineHeight: 1.65, margin: 0 }}>{c.opening}</p>
+                        </div>
+                        <div style={{ marginBottom: 10 }}>
+                          <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 6px" }}>Where it leads</p>
+                          <p style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.55, margin: 0 }}>{c.thread}</p>
+                        </div>
+                        <div style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 8, padding: "8px 12px" }}>
+                          <p style={{ fontSize: 12, color: "#6ee7b7", margin: 0, lineHeight: 1.5 }}>Bridge → {c.bridge}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </SectionCard>
+                )}
+
+                {/* 7. Content Analysis */}
+                {brief.content_analysis && (
+                  <SectionCard title="Content & Writing Analysis" icon="✍️" accentColor="#f97316">
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                      <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 14, textAlign: "center" }}>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: "#fdba74" }}>{brief.content_analysis.frequency}</div>
+                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>posting cadence</div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#e2e8f0", textAlign: "center" }}>{brief.content_analysis.assessment}</div>
+                      </div>
+                    </div>
+                    {(brief.content_analysis.themes || []).length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 8px" }}>Recurring themes</p>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {brief.content_analysis.themes.map(t => <Badge key={t} label={t} color="slate" />)}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ marginBottom: 12 }}>
+                      <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 6px" }}>Style · how to communicate with them</p>
+                      <p style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.6, margin: 0 }}>{brief.content_analysis.style}</p>
+                    </div>
+                    {brief.content_analysis.sponsored && brief.content_analysis.sponsoredNote && (
+                      <div style={{ display: "flex", gap: 8, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.18)", borderRadius: 10, padding: "10px 12px" }}>
+                        <span style={{ color: "#fbbf24", fontSize: 12 }}>💰</span>
+                        <p style={{ fontSize: 12, color: "rgba(253,186,116,0.85)", margin: 0, lineHeight: 1.5 }}><strong>Sponsored content detected.</strong> {brief.content_analysis.sponsoredNote}</p>
+                      </div>
+                    )}
+                  </SectionCard>
+                )}
+
+                {/* 8. Anchor + Social Proof */}
+                {brief.anchor && (
+                  <SectionCard title="Anchor + Social Proof" icon="⚓" accentColor="#6366f1">
+                    <div style={{ marginBottom: 16 }}>
+                      <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 10px" }}>Your Main Anchor</p>
+                      <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.22)", borderRadius: 12, padding: 16 }}>
+                        <p style={{ fontSize: 13, color: "#c7d2fe", lineHeight: 1.65, margin: 0, fontWeight: 500 }}>{brief.anchor.main}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 8px" }}>Social Proof</p>
+                      <p style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.6, margin: 0 }}>{brief.anchor.social_proof}</p>
+                    </div>
+                  </SectionCard>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // ── App Shell ──────────────────────────────────────────────────────────────
+    const App = () => {
+      const [screen,    setScreen]    = useState("form");
+      const [inputs,    setInputs]    = useState(null);
+      const [briefData, setBriefData] = useState(null);
+      const [error,     setError]     = useState(null);
+
+      const handleSubmit = async (formInputs) => {
+        setInputs(formInputs);
+        setError(null);
+        setScreen("loading");
+
+        try {
+          const res = await fetch(`${API_BASE}/api/brief`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formInputs),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `Server error ${res.status}`);
+          }
+
+          const data = await res.json();
+          setBriefData(data);
+          setScreen("brief");
+        } catch (err) {
+          setError(err.message || "Unknown error");
+        }
+      };
+
+      return (
+        <div>
+          {screen === "form"    && <FormScreen    onSubmit={handleSubmit} />}
+          {screen === "loading" && <LoadingScreen error={error} />}
+          {screen === "brief"   && briefData && <BriefScreen brief={briefData} inputs={inputs} onReset={() => { setBriefData(null); setScreen("form"); }} />}
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
