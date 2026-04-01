@@ -1,4 +1,3 @@
-# Meeting Prepper v1.1
 """
 Meeting Prepper — Backend API
 Vercel Python serverless function (also runs locally via Flask).
@@ -9,7 +8,8 @@ Pipeline:
   3. Return JSON              → Frontend renders the cheat sheet
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
+import os
 from flask_cors import CORS
 import anthropic
 import httpx
@@ -275,45 +275,61 @@ def build_user_prompt(inputs: dict, gathered: dict) -> str:
     return "\n".join(lines)
 
 
-# ── Flask Route ────────────────────────────────────────────────────────────────
+# ── Flask Routes ───────────────────────────────────────────────────────────────
+
+@app.route("/")
+@app.route("/<path:path>")
+def serve_frontend(path=""):
+    """Serve index.html for all non-API routes."""
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    return send_from_directory(dir_path, "index.html")
+
 
 @app.route("/api/brief", methods=["POST", "OPTIONS"])
 def generate_brief():
     if request.method == "OPTIONS":
         return "", 200
 
-    inputs = request.get_json(force=True)
-    if not inputs or not inputs.get("name") or not inputs.get("company"):
-        return jsonify({"error": "name and company are required"}), 400
-
-    # 1. Gather data in parallel
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
     try:
-        gathered = loop.run_until_complete(gather_all_data(inputs))
-    finally:
-        loop.close()
+        inputs = request.get_json(force=True)
+        if not inputs or not inputs.get("name") or not inputs.get("company"):
+            return jsonify({"error": "name and company are required"}), 400
 
-    # 2. Build prompt
-    user_prompt = build_user_prompt(inputs, gathered)
+        # Guard: fail fast if API keys are missing
+        if not ANTHROPIC_API_KEY:
+            return jsonify({"error": "ANTHROPIC_API_KEY is not set in Vercel environment variables"}), 500
 
-    # 3. Generate brief with Claude
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    message = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=4096,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
+        # 1. Gather data in parallel
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            gathered = loop.run_until_complete(gather_all_data(inputs))
+        finally:
+            loop.close()
 
-    raw = message.content[0].text.strip()
+        # 2. Build prompt
+        user_prompt = build_user_prompt(inputs, gathered)
 
-    # Strip markdown code fences if Claude wraps in ```json
-    raw = re.sub(r"^```(?:json)?\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
+        # 3. Generate brief with Claude
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        message = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=4096,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
 
-    brief = json.loads(raw)
-    return jsonify(brief)
+        raw = message.content[0].text.strip()
+
+        # Strip markdown code fences if Claude wraps in ```json
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+
+        brief = json.loads(raw)
+        return jsonify(brief)
+
+    except Exception as e:
+        return jsonify({"error": f"Server error: {type(e).__name__}: {str(e)}"}), 500
 
 
 @app.route("/health", methods=["GET"])
