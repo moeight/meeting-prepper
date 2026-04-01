@@ -1,11 +1,22 @@
 {
   "builds": [
-    { "src": "api/brief.py", "use": "@vercel/python" }
+    { "src": "api/brief.py", "use": "@vercel/python" },
+    { "src": "index.html", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "api/brief.py" },
     { "src": "/health", "dest": "api/brief.py" },
-    { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://unpkg.com; connect-src 'self'; style-src 'self' 'unsafe-inline';"
+        }
+      ]
+    }
   ]
 }
