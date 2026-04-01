@@ -1,3 +1,4 @@
+# Meeting Prepper v1.1
 """
 Meeting Prepper — Backend API
 Vercel Python serverless function (also runs locally via Flask).
