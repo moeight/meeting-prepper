@@ -3,8 +3,7 @@
     { "src": "api/brief.py", "use": "@vercel/python" }
   ],
   "routes": [
-    { "src": "/api/brief", "dest": "api/brief.py" }
-  ],
-  
-  }
-
+    { "src": "/api/(.*)", "dest": "api/brief.py" },
+    { "src": "/health", "dest": "api/brief.py" }
+  ]
+}
