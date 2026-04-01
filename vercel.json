@@ -1,4 +1,10 @@
 {
+  "builds": [
+    { "src": "api/brief.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/api/brief", "dest": "api/brief.py" }
+  ],
   "functions": {
     "api/brief.py": {
       "maxDuration": 60
