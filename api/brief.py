@@ -253,15 +253,17 @@ def build_user_prompt(inputs: dict, gathered: dict) -> str:
     if gathered.get("company_website"):
         lines.append(f"\n### Company Website\n{gathered['company_website'][:2500]}")
 
-    ig = gathered.get("instagram_data")
-    if ig:
-        lines.append("\n### Instagram Profile")
-        lines.append(f"  Bio:       {ig.get('biography', 'n/a')}")
-        lines.append(f"  Followers: {ig.get('followersCount', 'n/a')}")
-        for post in ig.get("latestPosts", [])[:8]:
-            cap = post.get("caption", "")[:200]
+    ig_posts = gathered.get("instagram_data")
+    if ig_posts:
+        lines.append("\n### Instagram Posts (recent)")
+        for post in ig_posts[:10]:
+            cap = post.get("caption", "")[:250]
+            ts  = (post.get("timestamp") or "")[:10]
+            likes = post.get("likesCount", "")
             if cap:
-                lines.append(f"  Post: {cap}")
+                meta = f" [{ts}]" if ts else ""
+                eng  = f" — {likes} likes" if likes else ""
+                lines.append(f"  Post{meta}: {cap}{eng}")
 
     lines += [
         "",
