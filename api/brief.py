@@ -67,27 +67,24 @@ async def apify_scrape_url(client: httpx.AsyncClient, url: str) -> str:
         return ""
 
 
-async def apify_instagram(client: httpx.AsyncClient, instagram_url: str) -> dict:
-    """Scrape Instagram profile via Apify — returns profile + recent posts."""
+async def apify_instagram(client: httpx.AsyncClient, instagram_url: str) -> list:
+    """Scrape recent Instagram posts via Apify — returns list of posts with captions."""
     if not APIFY_TOKEN:
-        return {}
-    username = (
-        instagram_url
-        .replace("https://www.instagram.com/", "")
-        .replace("https://instagram.com/", "")
-        .strip("/")
-    )
+        return []
     try:
         resp = await client.post(
-            f"https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token={APIFY_TOKEN}",
-            json={"usernames": [username], "resultsLimit": 15},
-            timeout=30.0,
+            f"https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token={APIFY_TOKEN}",
+            json={
+                "directUrls": [instagram_url],
+                "resultsType": "posts",
+                "resultsLimit": 12,
+            },
+            timeout=35.0,
         )
         items = resp.json()
-        return items[0] if items and isinstance(items, list) else {}
+        return items if isinstance(items, list) else []
     except Exception:
-        return {}
-
+        return []
 
 async def gather_all_data(inputs: dict) -> dict:
     """
