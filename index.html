@@ -82,8 +82,13 @@
       const [prevAttendees, setPrevAttendees] = useState("");
       const [prevAnchored,  setPrevAnchored]  = useState("");
 
-      const optionalFilled = [linkedin, instagram, website].filter(Boolean).length;
-      const completePct = Math.round(([name, company].filter(Boolean).length / 2) * 60 + (optionalFilled / 3) * 40);
+      const completePct = Math.round(
+        ([name, company].filter(Boolean).length / 2) * 35 +
+        (linkedin.trim()  ? 20 : 0) +
+        (instagram.trim() ? 20 : 0) +
+        (website.trim()   ? 10 : 0) +
+        (context.trim()   ? 15 : 0)
+      );
       const barColor = completePct >= 80 ? "#10b981" : completePct >= 50 ? "#f59e0b" : "#6366f1";
 
       const TYPES = ["Sales Pitch", "Investor Meeting", "Partnership", "Job Interview"];
@@ -97,7 +102,7 @@
 
       const inputStyle = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#e2e8f0", outline: "none", fontFamily: "inherit" };
       const labelStyle = { fontSize: 11, fontWeight: 500, color: "#94a3b8", marginBottom: 6, display: "block" };
-      const canGenerate = name.trim() && company.trim();
+      const canGenerate = name.trim() && company.trim() && linkedin.trim() && instagram.trim() && context.trim();
 
       const handleSubmit = () => {
         if (!canGenerate) return;
@@ -152,21 +157,25 @@
                   <div><label style={labelStyle}>Company <span style={{ color: "#a5b4fc" }}>*</span></label><input style={inputStyle} value={company} onChange={e => setCompany(e.target.value)} placeholder="Kintsugi Labs" /></div>
                 </div>
                 <div style={{ marginBottom: 12 }}><label style={labelStyle}>Role / Title <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label><input style={inputStyle} value={role} onChange={e => setRole(e.target.value)} placeholder="Co-founder & CEO" /></div>
-                <div style={{ marginBottom: 12 }}><label style={labelStyle}>LinkedIn URL <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label><input style={inputStyle} value={linkedin} onChange={e => setLinkedin(e.target.value)} placeholder="linkedin.com/in/username" /></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-                  <div><label style={labelStyle}>Instagram URL <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label><input style={inputStyle} value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="instagram.com/username" /></div>
+                <div style={{ marginBottom: 12 }}><label style={labelStyle}>LinkedIn URL <span style={{ color: "#a5b4fc" }}>*</span></label><input style={inputStyle} value={linkedin} onChange={e => setLinkedin(e.target.value)} placeholder="linkedin.com/in/username" /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                  <div><label style={labelStyle}>Instagram URL <span style={{ color: "#a5b4fc" }}>*</span></label><input style={inputStyle} value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="instagram.com/username" /></div>
                   <div><label style={labelStyle}>Company Website <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label><input style={inputStyle} value={website} onChange={e => setWebsite(e.target.value)} placeholder="kintsugi.com" /></div>
                 </div>
-                {/* Quality bar */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelStyle}>Context <span style={{ color: "#a5b4fc" }}>*</span></label>
+                  <textarea value={context} onChange={e => setContext(e.target.value)} placeholder="e.g. Introduced by a mutual contact. He mentioned pricing was a concern previously." rows={3} style={{ ...inputStyle, resize: "none" }} />
+                </div>
+                {/* Intent Depth bar */}
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: "#64748b" }}>Research quality</span>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>Intent Depth</span>
                     <span style={{ fontSize: 11, fontWeight: 500, color: barColor }}>{completePct >= 80 ? "Excellent" : completePct >= 50 ? "Good" : "Basic"} · {completePct}%</span>
                   </div>
                   <div style={{ height: 5, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${completePct}%`, background: barColor, borderRadius: 99, transition: "width 0.4s ease" }} />
                   </div>
-                  {optionalFilled < 3 && <p style={{ fontSize: 11, color: "#475569", marginTop: 6 }}>Add LinkedIn, Instagram, or website for richer analysis.</p>}
+                  {!website.trim() && <p style={{ fontSize: 11, color: "#475569", marginTop: 6 }}>Add the company website for the richest possible analysis.</p>}
                 </div>
               </div>
 
@@ -185,13 +194,10 @@
                     <div><label style={labelStyle}>What did you anchor on last time?</label><input style={inputStyle} value={prevAnchored} onChange={e => setPrevAnchored(e.target.value)} placeholder="e.g. Their bottleneck in scaling outbound" /></div>
                   </div>
                 )}
-                <div><label style={labelStyle}>Additional context <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label>
-                  <textarea value={context} onChange={e => setContext(e.target.value)} placeholder="e.g. Introduced by a mutual contact. He mentioned pricing was a concern previously." rows={3} style={{ ...inputStyle, resize: "none" }} />
-                </div>
               </div>
 
               <button onClick={handleSubmit} disabled={!canGenerate} style={{ width: "100%", padding: "15px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: canGenerate ? "pointer" : "default", background: canGenerate ? "#4f46e5" : "rgba(255,255,255,0.04)", color: canGenerate ? "#fff" : "#475569", border: canGenerate ? "none" : "1px solid rgba(255,255,255,0.06)", boxShadow: canGenerate ? "0 4px 24px rgba(99,102,241,0.25)" : "none" }}>
-                {canGenerate ? "🧠 Generate Meeting Brief" : "Enter name & company to continue"}
+                {canGenerate ? "🧠 Generate Meeting Brief" : "Fill in all required fields to continue"}
               </button>
               <p style={{ textAlign: "center", fontSize: 11, color: "#334155", marginTop: 10 }}>Research takes ~20–40 seconds depending on data availability.</p>
             </div>
@@ -259,6 +265,10 @@
       const p = brief.person || {};
       const qualityColor = brief.data_quality === "high" ? "#34d399" : brief.data_quality === "medium" ? "#fbbf24" : "#94a3b8";
 
+      const nameWords = (inputs?.name || "").toLowerCase().split(/\s+/).filter(w => w.length > 1);
+      const briefPersonName = (p.name || "").toLowerCase();
+      const nameMismatch = nameWords.length > 0 && !nameWords.some(w => briefPersonName.includes(w));
+
       return (
         <div style={{ minHeight: "100vh", background: "#080c14", color: "#fff" }}>
           {/* Sticky top bar */}
@@ -276,19 +286,28 @@
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 3 }}>
-                {[{ v: "quick", l: "⚡ Quick Fire" }, { v: "full", l: "📋 Full Brief" }].map(({ v, l }) => (
+                {[{ v: "quick", l: "⚡ 5-Min Brief" }, { v: "full", l: "📋 Full Brief" }].map(({ v, l }) => (
                   <button key={v} onClick={() => setView(v)} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: "pointer", border: "none", background: view === v ? "rgba(99,102,241,0.2)" : "transparent", color: view === v ? "#a5b4fc" : "#64748b" }}>{l}</button>
                 ))}
               </div>
             </div>
           </div>
 
+          {nameMismatch && (
+            <div style={{ background: "rgba(245,158,11,0.08)", borderBottom: "1px solid rgba(245,158,11,0.2)", padding: "10px 24px", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 15 }}>⚠️</span>
+              <p style={{ fontSize: 12, color: "#fcd34d", margin: 0, lineHeight: 1.5 }}>
+                <strong>Name mismatch detected.</strong> The name you entered ("{inputs?.name}") doesn't match the profile data we found ("{p.name}"). Please ensure this is the correct person before your meeting.
+              </p>
+            </div>
+          )}
+
           <div style={{ maxWidth: 700, margin: "0 auto", padding: "32px 24px" }}>
 
             {/* ── Quick Fire ── */}
             {view === "quick" && (
               <div className="fade-in">
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: "0 0 4px" }}>⚡ Quick Fire Brief</h2>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: "0 0 4px" }}>⚡ 5-Minute Brief</h2>
                 <p style={{ fontSize: 12, color: "#475569", margin: "0 0 20px" }}>The {(brief.quick_fire || []).length} things that matter most before you walk in.</p>
                 <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.18)", borderRadius: 14, padding: 20, marginBottom: 16 }}>
                   {(brief.quick_fire || []).map((item, i) => (
@@ -324,7 +343,7 @@
 
                 {/* 1. Confirmation Bias */}
                 {(brief.confirmation_bias || []).length > 0 && (
-                  <SectionCard title="Confirmation Bias Intersections" icon="🤝" accentColor="#6366f1" tag="Priority 1">
+                  <SectionCard title="Common Ground" icon="🤝" accentColor="#6366f1" tag="Priority 1">
                     {brief.confirmation_bias.map((item, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < brief.confirmation_bias.length - 1 ? 14 : 0 }}>
                         <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: item.strength === "high" ? "#34d399" : item.strength === "medium" ? "#fbbf24" : "#94a3b8", flexShrink: 0, marginTop: 5 }} />
@@ -339,7 +358,7 @@
 
                 {/* 2. Recency Signals */}
                 {(brief.recency_signals || []).length > 0 && (
-                  <SectionCard title="Recency Signals" icon="📡" accentColor="#f59e0b" tag="Priority 2">
+                  <SectionCard title="What's On Their Mind" icon="📡" accentColor="#f59e0b" tag="Priority 2">
                     {brief.recency_signals.map((item, i) => {
                       const s = urgencyMap[item.urgency] || urgencyMap.watch;
                       return (
@@ -355,8 +374,8 @@
 
                 {/* 3. Authority Anchors */}
                 {(brief.authority_anchors || []).length > 0 && (
-                  <SectionCard title="Authority Anchors" icon="⭐" accentColor="#8b5cf6" tag="Priority 3">
-                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px", lineHeight: 1.5 }}>Who they publicly respect. Drop these names to signal shared vocabulary — not to show off.</p>
+                  <SectionCard title="Who They Listen To" icon="⭐" accentColor="#8b5cf6" tag="Priority 3">
+                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px", lineHeight: 1.5 }}>People they reference and look up to. Work these names naturally into the conversation.</p>
                     {brief.authority_anchors.map((a, i) => (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < brief.authority_anchors.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                         <span style={{ fontSize: 13, fontWeight: 500, color: "#e2e8f0" }}>{a.name}</span>
@@ -368,8 +387,8 @@
 
                 {/* 4. In-Group Markers */}
                 {(brief.ingroup_markers || []).length > 0 && (
-                  <SectionCard title="In-Group / Tribal Markers" icon="🏛️" accentColor="#06b6d4" tag="Priority 4">
-                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px", lineHeight: 1.5 }}>Shared identity signals. These build trust faster than any pitch.</p>
+                  <SectionCard title="Their World" icon="🏛️" accentColor="#06b6d4" tag="Priority 4">
+                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px", lineHeight: 1.5 }}>Communities, circles, and identity signals that shape how they see the world.</p>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       {brief.ingroup_markers.map((m, i) => (
                         <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#cbd5e1" }}>{m}</div>
@@ -380,8 +399,8 @@
 
                 {/* 5. Loss Aversion */}
                 {(brief.loss_aversion || []).length > 0 && (
-                  <SectionCard title="Loss Aversion Framing" icon="⚠️" accentColor="#ef4444" tag="Priority 5">
-                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 14px", lineHeight: 1.5 }}>What they're afraid of losing. Frame your offer around protecting these.</p>
+                  <SectionCard title="What They're Protecting" icon="🛡️" accentColor="#ef4444" tag="Priority 5">
+                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 14px", lineHeight: 1.5 }}>What they're working hard to protect. Frame your pitch around reinforcing these priorities.</p>
                     {brief.loss_aversion.map((item, i) => (
                       <div key={i} style={{ borderLeft: "2px solid rgba(239,68,68,0.3)", paddingLeft: 12, marginBottom: i < brief.loss_aversion.length - 1 ? 16 : 0 }}>
                         <p style={{ fontSize: 13, fontWeight: 500, color: "#e2e8f0", margin: "0 0 4px", lineHeight: 1.5 }}>{item.fear}</p>
@@ -393,8 +412,8 @@
 
                 {/* 6. Conversation Cascades */}
                 {(brief.cascades || []).length > 0 && (
-                  <SectionCard title="Conversation Cascades" icon="💬" accentColor="#10b981">
-                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 16px", lineHeight: 1.5 }}>Research-rooted opening questions that lead naturally to your pitch angle.</p>
+                  <SectionCard title="Conversation Starters" icon="💬" accentColor="#10b981">
+                    <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 16px", lineHeight: 1.5 }}>Opening questions rooted in real research that lead naturally into the heart of the conversation.</p>
                     {brief.cascades.map((c, i) => (
                       <div key={c.id} style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 16, marginBottom: i < brief.cascades.length - 1 ? 12 : 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -419,7 +438,7 @@
 
                 {/* 7. Content Analysis */}
                 {brief.content_analysis && (
-                  <SectionCard title="Content & Writing Analysis" icon="✍️" accentColor="#f97316">
+                  <SectionCard title="Their Voice & Style" icon="✍️" accentColor="#f97316">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
                       <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 14, textAlign: "center" }}>
                         <div style={{ fontSize: 20, fontWeight: 700, color: "#fdba74" }}>{brief.content_analysis.frequency}</div>
@@ -452,7 +471,7 @@
 
                 {/* 8. Anchor + Social Proof */}
                 {brief.anchor && (
-                  <SectionCard title="Anchor + Social Proof" icon="⚓" accentColor="#6366f1">
+                  <SectionCard title="Your Best Hook" icon="⚓" accentColor="#6366f1">
                     <div style={{ marginBottom: 16 }}>
                       <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 10px" }}>Your Main Anchor</p>
                       <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.22)", borderRadius: 12, padding: 16 }}>
