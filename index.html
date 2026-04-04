@@ -28,8 +28,8 @@
 
     // ── Supabase ───────────────────────────────────────────────────────────────
     // Replace these with your values from Supabase → Settings → API
-    const SUPABASE_URL      = "https://tuyavpprivaxybzyuizy.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eWF2cHByaXZheHlienl1aXp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMTMwNDMsImV4cCI6MjA5MDg4OTA0M30.WurY5js3zkxldZF_yzfV0NdHNPcesUZLA98BoBgx3PQ";
+    const SUPABASE_URL      = "YOUR_SUPABASE_URL";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const FREE_LIMIT = 3;
@@ -676,8 +676,15 @@
       // Auth state listener
       useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => setSession(session ?? null));
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-          setSession(session ?? null);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          // Only wipe the session on an explicit sign-out.
+          // TOKEN_REFRESHED and other transient events must NOT null the session,
+          // otherwise switching windows causes a full unmount and wipes form state.
+          if (event === "SIGNED_OUT") {
+            setSession(null);
+          } else if (session) {
+            setSession(session);
+          }
         });
         return () => subscription.unsubscribe();
       }, []);
@@ -763,7 +770,8 @@
       };
 
       // ── Render gates ──────────────────────────────────────────────────────────
-      if (session === undefined || profileLoading) return null; // silent splash
+      if (session === undefined) return null; // still doing the initial session check
+      if (profileLoading && !profile) return null; // only blank-screen on the very first profile load
       if (!session) return <AuthScreen />;
       if (!profile?.approved) return <PendingScreen />;
 
