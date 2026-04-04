@@ -158,29 +158,14 @@
                 </div>
                 <div style={{ marginBottom: 12 }}><label style={labelStyle}>Role / Title <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label><input style={inputStyle} value={role} onChange={e => setRole(e.target.value)} placeholder="Co-founder & CEO" /></div>
                 <div style={{ marginBottom: 12 }}><label style={labelStyle}>LinkedIn URL <span style={{ color: "#a5b4fc" }}>*</span></label><input style={inputStyle} value={linkedin} onChange={e => setLinkedin(e.target.value)} placeholder="linkedin.com/in/username" /></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div><label style={labelStyle}>Instagram URL <span style={{ color: "#a5b4fc" }}>*</span></label><input style={inputStyle} value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="instagram.com/username" /></div>
                   <div><label style={labelStyle}>Company Website <span style={{ color: "#475569", fontWeight: 400 }}>optional</span></label><input style={inputStyle} value={website} onChange={e => setWebsite(e.target.value)} placeholder="kintsugi.com" /></div>
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={labelStyle}>Context <span style={{ color: "#a5b4fc" }}>*</span></label>
-                  <textarea value={context} onChange={e => setContext(e.target.value)} placeholder="e.g. Introduced by a mutual contact. He mentioned pricing was a concern previously." rows={3} style={{ ...inputStyle, resize: "none" }} />
-                </div>
-                {/* Intent Depth bar */}
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: "#64748b" }}>Intent Depth</span>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: barColor }}>{completePct >= 80 ? "Excellent" : completePct >= 50 ? "Good" : "Basic"} · {completePct}%</span>
-                  </div>
-                  <div style={{ height: 5, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${completePct}%`, background: barColor, borderRadius: 99, transition: "width 0.4s ease" }} />
-                  </div>
-                  {!website.trim() && <p style={{ fontSize: 11, color: "#475569", marginTop: 6 }}>Add the company website for the richest possible analysis.</p>}
                 </div>
               </div>
 
               {/* Meeting Context */}
-              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 20, marginBottom: 20 }}>
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 20, marginBottom: 16 }}>
                 <p style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 16px" }}>Meeting Context</p>
                 <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                   {["First Meeting", "Follow-up"].map(opt => {
@@ -189,11 +174,27 @@
                   })}
                 </div>
                 {isFollowUp && (
-                  <div style={{ marginBottom: 12 }}>
+                  <div style={{ marginBottom: 16 }}>
                     <div style={{ marginBottom: 12 }}><label style={labelStyle}>Who attended last time?</label><input style={inputStyle} value={prevAttendees} onChange={e => setPrevAttendees(e.target.value)} placeholder="e.g. Arjun + his Head of Growth" /></div>
-                    <div><label style={labelStyle}>What did you anchor on last time?</label><input style={inputStyle} value={prevAnchored} onChange={e => setPrevAnchored(e.target.value)} placeholder="e.g. Their bottleneck in scaling outbound" /></div>
+                    <div style={{ marginBottom: 16 }}><label style={labelStyle}>What did you anchor on last time?</label><input style={inputStyle} value={prevAnchored} onChange={e => setPrevAnchored(e.target.value)} placeholder="e.g. Their bottleneck in scaling outbound" /></div>
                   </div>
                 )}
+                <div>
+                  <label style={labelStyle}>Context <span style={{ color: "#a5b4fc" }}>*</span></label>
+                  <textarea value={context} onChange={e => setContext(e.target.value)} placeholder="e.g. Introduced by a mutual contact. He mentioned pricing was a concern previously." rows={3} style={{ ...inputStyle, resize: "none" }} />
+                </div>
+              </div>
+
+              {/* Intent Depth */}
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 20, marginBottom: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Intent Depth</span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: barColor }}>{completePct >= 80 ? "Excellent" : completePct >= 50 ? "Good" : "Basic"} · {completePct}%</span>
+                </div>
+                <div style={{ height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${completePct}%`, background: barColor, borderRadius: 99, transition: "width 0.4s ease" }} />
+                </div>
+                {!website.trim() && <p style={{ fontSize: 11, color: "#475569", marginTop: 8, marginBottom: 0 }}>Add the company website for the richest possible analysis.</p>}
               </div>
 
               <button onClick={handleSubmit} disabled={!canGenerate} style={{ width: "100%", padding: "15px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: canGenerate ? "pointer" : "default", background: canGenerate ? "#4f46e5" : "rgba(255,255,255,0.04)", color: canGenerate ? "#fff" : "#475569", border: canGenerate ? "none" : "1px solid rgba(255,255,255,0.06)", boxShadow: canGenerate ? "0 4px 24px rgba(99,102,241,0.25)" : "none" }}>
