@@ -24,14 +24,15 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // Change this to your Vercel URL once deployed, e.g. "https://meeting-prepper.vercel.app"
     const API_BASE = window.location.hostname === "localhost" ? "http://localhost:5001" : "";
 
     // ── Supabase ───────────────────────────────────────────────────────────────
-    // Replace these two values with your own from Supabase → Settings → API
+    // Replace these with your values from Supabase → Settings → API
     const SUPABASE_URL      = "https://tuyavpprivaxybzyuizy.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eWF2cHByaXZheHlienl1aXp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMTMwNDMsImV4cCI6MjA5MDg4OTA0M30.WurY5js3zkxldZF_yzfV0NdHNPcesUZLA98BoBgx3PQ";
+    const SUPABASE_ANON_KEY = "YeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eWF2cHByaXZheHlienl1aXp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMTMwNDMsImV4cCI6MjA5MDg4OTA0M30.WurY5js3zkxldZF_yzfV0NdHNPcesUZLA98BoBgx3PQ";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const FREE_LIMIT = 3;
 
     const LOADING_STEPS = [
       "Scanning LinkedIn activity…",
@@ -74,6 +75,70 @@
       </div>
     );
 
+    // ── Sidebar ────────────────────────────────────────────────────────────────
+    const Sidebar = ({ history, onSelectSearch, onNewBrief, activeId, searchCount }) => {
+      const used = searchCount || 0;
+      const remaining = Math.max(0, FREE_LIMIT - used);
+      const pct = Math.min(100, (used / FREE_LIMIT) * 100);
+      const barColor = remaining === 0 ? "#ef4444" : remaining === 1 ? "#f59e0b" : "#6366f1";
+
+      return (
+        <div style={{ width: 252, borderRight: "1px solid rgba(255,255,255,0.06)", background: "rgba(4,6,12,0.7)", display: "flex", flexDirection: "column", height: "100vh", position: "sticky", top: 0, flexShrink: 0 }}>
+          {/* Logo */}
+          <div style={{ padding: "18px 14px 10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🧠</div>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "#fff", letterSpacing: "-0.02em" }}>Meeting Prepper</span>
+            </div>
+          </div>
+
+          {/* New Brief button */}
+          <div style={{ padding: "4px 10px 10px" }}>
+            <button onClick={onNewBrief} style={{ width: "100%", padding: "9px 0", borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: "pointer", background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.25)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <span>+</span> New Brief
+            </button>
+          </div>
+
+          {/* Usage meter */}
+          <div style={{ padding: "0 10px 10px" }}>
+            <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "8px 12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 10, color: "#475569", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em" }}>Free briefs</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: remaining === 0 ? "#f87171" : "#a5b4fc" }}>{used} / {FREE_LIMIT} used</span>
+              </div>
+              <div style={{ height: 4, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 99, transition: "width 0.4s ease" }} />
+              </div>
+            </div>
+          </div>
+
+          {/* History label */}
+          {history.length > 0 && (
+            <p style={{ fontSize: 10, fontWeight: 600, color: "#334155", textTransform: "uppercase", letterSpacing: "0.08em", margin: "4px 14px 6px" }}>Recent</p>
+          )}
+
+          {/* History list */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 8px" }}>
+            {history.length === 0 ? (
+              <p style={{ fontSize: 12, color: "#334155", textAlign: "center", marginTop: 24, padding: "0 12px", lineHeight: 1.65 }}>Your briefs will appear here after your first search.</p>
+            ) : (
+              history.map(item => (
+                <button key={item.id} onClick={() => onSelectSearch(item)} style={{ width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 9, border: "none", background: activeId === item.id ? "rgba(99,102,241,0.12)" : "transparent", cursor: "pointer", marginBottom: 1, display: "block" }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: activeId === item.id ? "#a5b4fc" : "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+                  <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>{item.company} · {new Date(item.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
+                </button>
+              ))
+            )}
+          </div>
+
+          {/* Sign out */}
+          <div style={{ padding: "10px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+            <button onClick={() => supabase.auth.signOut()} style={{ width: "100%", padding: "8px 0", borderRadius: 9, fontSize: 12, color: "#475569", background: "none", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer" }}>Sign out</button>
+          </div>
+        </div>
+      );
+    };
+
     // ── Screen 0: Auth ─────────────────────────────────────────────────────────
     const AuthScreen = () => {
       const [mode,     setMode]     = useState("login");
@@ -92,7 +157,7 @@
           ? await supabase.auth.signUp({ email, password })
           : await supabase.auth.signInWithPassword({ email, password });
         if (error) setError(error.message);
-        else if (mode === "signup") setMessage("Check your email to confirm your account, then sign in.");
+        else if (mode === "signup") setMessage("Account created! Check your email to confirm, then sign in.");
         setLoading(false);
       };
 
@@ -122,8 +187,8 @@
                 <input style={inputStyle} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleEmailAuth()} />
               </div>
 
-              {error   && <p style={{ fontSize: 12, color: "#f87171", marginBottom: 14, margin: "0 0 14px" }}>{error}</p>}
-              {message && <p style={{ fontSize: 12, color: "#34d399", marginBottom: 14, margin: "0 0 14px" }}>{message}</p>}
+              {error   && <p style={{ fontSize: 12, color: "#f87171", margin: "0 0 14px" }}>{error}</p>}
+              {message && <p style={{ fontSize: 12, color: "#34d399", margin: "0 0 14px" }}>{message}</p>}
 
               <button onClick={handleEmailAuth} disabled={loading || !email || !password} style={{ width: "100%", padding: "13px 0", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: loading || !email || !password ? "default" : "pointer", background: loading || !email || !password ? "rgba(255,255,255,0.04)" : "#4f46e5", color: loading || !email || !password ? "#475569" : "#fff", border: loading || !email || !password ? "1px solid rgba(255,255,255,0.06)" : "none", marginBottom: 12, boxShadow: loading || !email || !password ? "none" : "0 4px 20px rgba(99,102,241,0.25)" }}>
                 {loading ? "Loading…" : mode === "login" ? "Sign in" : "Create account"}
@@ -152,8 +217,36 @@
       );
     };
 
+    // ── Screen: Pending Approval ───────────────────────────────────────────────
+    const PendingScreen = () => (
+      <div style={{ minHeight: "100vh", background: "#080c14", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ width: "100%", maxWidth: 420, textAlign: "center" }}>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, margin: "0 auto 20px" }}>⏳</div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: "0 0 10px", letterSpacing: "-0.02em" }}>Access Pending</h2>
+          <p style={{ fontSize: 13, color: "#64748b", lineHeight: 1.65, margin: "0 0 6px" }}>Your account is awaiting approval.</p>
+          <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.65, margin: "0 0 28px" }}>You'll receive access once your request has been reviewed. This usually happens within 24 hours.</p>
+          <button onClick={() => supabase.auth.signOut()} style={{ fontSize: 12, color: "#475569", background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, padding: "9px 18px", cursor: "pointer" }}>Sign out</button>
+        </div>
+      </div>
+    );
+
+    // ── Screen: Limit Reached ──────────────────────────────────────────────────
+    const LimitScreen = ({ history, onSelectSearch }) => (
+      <div style={{ display: "flex", height: "100vh", background: "#080c14", overflow: "hidden" }}>
+        <Sidebar history={history} onSelectSearch={onSelectSearch} onNewBrief={() => {}} activeId={null} searchCount={FREE_LIMIT} />
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 420, textAlign: "center" }}>
+            <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, margin: "0 auto 20px" }}>🔒</div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: "0 0 10px", letterSpacing: "-0.02em" }}>Free trial complete</h2>
+            <p style={{ fontSize: 13, color: "#64748b", lineHeight: 1.65, margin: "0 0 8px" }}>You've used all {FREE_LIMIT} of your free briefs.</p>
+            <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.65, margin: 0 }}>Your previous briefs are still accessible on the left. To continue generating new ones, reach out to get full access.</p>
+          </div>
+        </div>
+      </div>
+    );
+
     // ── Screen 1: Form ─────────────────────────────────────────────────────────
-    const FormScreen = ({ onSubmit }) => {
+    const FormScreen = ({ onSubmit, searchCount }) => {
       const [meetingType, setMeetingType] = useState("Sales Pitch");
       const [timeAvail,   setTimeAvail]   = useState("24hr");
       const [isFollowUp,  setIsFollowUp]  = useState(false);
@@ -188,6 +281,7 @@
       const inputStyle = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#e2e8f0", outline: "none", fontFamily: "inherit" };
       const labelStyle = { fontSize: 11, fontWeight: 500, color: "#94a3b8", marginBottom: 6, display: "block" };
       const canGenerate = name.trim() && company.trim() && linkedin.trim() && instagram.trim() && context.trim();
+      const remaining = Math.max(0, FREE_LIMIT - (searchCount || 0));
 
       const handleSubmit = () => {
         if (!canGenerate) return;
@@ -196,15 +290,6 @@
 
       return (
         <div style={{ minHeight: "100vh", background: "#080c14", color: "#fff" }}>
-          {/* Header */}
-          <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧠</div>
-              <span style={{ fontWeight: 700, color: "#fff", letterSpacing: "-0.02em", fontSize: 15 }}>Meeting Prepper</span>
-            </div>
-            <button onClick={() => supabase.auth.signOut()} style={{ fontSize: 12, color: "#475569", background: "none", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>Sign out</button>
-          </div>
-
           <div style={{ display: "flex", justifyContent: "center", padding: "40px 16px" }}>
             <div style={{ width: "100%", maxWidth: 520 }}>
               <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fff", letterSpacing: "-0.03em", margin: "0 0 4px" }}>New Meeting Brief</h1>
@@ -284,7 +369,7 @@
               </div>
 
               <button onClick={handleSubmit} disabled={!canGenerate} style={{ width: "100%", padding: "15px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: canGenerate ? "pointer" : "default", background: canGenerate ? "#4f46e5" : "rgba(255,255,255,0.04)", color: canGenerate ? "#fff" : "#475569", border: canGenerate ? "none" : "1px solid rgba(255,255,255,0.06)", boxShadow: canGenerate ? "0 4px 24px rgba(99,102,241,0.25)" : "none" }}>
-                {canGenerate ? "🧠 Generate Meeting Brief" : "Fill in all required fields to continue"}
+                {canGenerate ? `🧠 Generate Meeting Brief (${remaining} free ${remaining === 1 ? "brief" : "briefs"} left)` : "Fill in all required fields to continue"}
               </button>
               <p style={{ textAlign: "center", fontSize: 11, color: "#334155", marginTop: 10 }}>Research takes ~20–40 seconds depending on data availability.</p>
             </div>
@@ -371,13 +456,10 @@
               <Badge label={brief.meetingType || inputs?.meetingType} color="indigo" />
               <span style={{ fontSize: 11, color: qualityColor }}>● {brief.data_quality} quality</span>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 3 }}>
-                {[{ v: "quick", l: "⚡ 5-Min Brief" }, { v: "full", l: "📋 Full Brief" }].map(({ v, l }) => (
-                  <button key={v} onClick={() => setView(v)} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: "pointer", border: "none", background: view === v ? "rgba(99,102,241,0.2)" : "transparent", color: view === v ? "#a5b4fc" : "#64748b" }}>{l}</button>
-                ))}
-              </div>
-              <button onClick={() => supabase.auth.signOut()} style={{ fontSize: 12, color: "#475569", background: "none", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>Sign out</button>
+            <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 3 }}>
+              {[{ v: "quick", l: "⚡ 5-Min Brief" }, { v: "full", l: "📋 Full Brief" }].map(({ v, l }) => (
+                <button key={v} onClick={() => setView(v)} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: "pointer", border: "none", background: view === v ? "rgba(99,102,241,0.2)" : "transparent", color: view === v ? "#a5b4fc" : "#64748b" }}>{l}</button>
+              ))}
             </div>
           </div>
 
@@ -429,7 +511,7 @@
                   </div>
                 </div>
 
-                {/* 1. Confirmation Bias */}
+                {/* 1. Common Ground */}
                 {(brief.confirmation_bias || []).length > 0 && (
                   <SectionCard title="Common Ground" icon="🤝" accentColor="#6366f1" tag="Priority 1">
                     {brief.confirmation_bias.map((item, i) => (
@@ -444,7 +526,7 @@
                   </SectionCard>
                 )}
 
-                {/* 2. Recency Signals */}
+                {/* 2. What's On Their Mind */}
                 {(brief.recency_signals || []).length > 0 && (
                   <SectionCard title="What's On Their Mind" icon="📡" accentColor="#f59e0b" tag="Priority 2">
                     {brief.recency_signals.map((item, i) => {
@@ -460,7 +542,7 @@
                   </SectionCard>
                 )}
 
-                {/* 3. Authority Anchors */}
+                {/* 3. Who They Listen To */}
                 {(brief.authority_anchors || []).length > 0 && (
                   <SectionCard title="Who They Listen To" icon="⭐" accentColor="#8b5cf6" tag="Priority 3">
                     <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px", lineHeight: 1.5 }}>People they reference and look up to. Work these names naturally into the conversation.</p>
@@ -473,7 +555,7 @@
                   </SectionCard>
                 )}
 
-                {/* 4. In-Group Markers */}
+                {/* 4. Their World */}
                 {(brief.ingroup_markers || []).length > 0 && (
                   <SectionCard title="Their World" icon="🏛️" accentColor="#06b6d4" tag="Priority 4">
                     <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px", lineHeight: 1.5 }}>Communities, circles, and identity signals that shape how they see the world.</p>
@@ -485,7 +567,7 @@
                   </SectionCard>
                 )}
 
-                {/* 5. Loss Aversion */}
+                {/* 5. What They're Protecting */}
                 {(brief.loss_aversion || []).length > 0 && (
                   <SectionCard title="What They're Protecting" icon="🛡️" accentColor="#ef4444" tag="Priority 5">
                     <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 14px", lineHeight: 1.5 }}>What they're working hard to protect. Frame your pitch around reinforcing these priorities.</p>
@@ -498,7 +580,7 @@
                   </SectionCard>
                 )}
 
-                {/* 6. Conversation Cascades */}
+                {/* 6. Conversation Starters */}
                 {(brief.cascades || []).length > 0 && (
                   <SectionCard title="Conversation Starters" icon="💬" accentColor="#10b981">
                     <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 16px", lineHeight: 1.5 }}>Opening questions rooted in real research that lead naturally into the heart of the conversation.</p>
@@ -524,7 +606,7 @@
                   </SectionCard>
                 )}
 
-                {/* 7. Content Analysis */}
+                {/* 7. Their Voice & Style */}
                 {brief.content_analysis && (
                   <SectionCard title="Their Voice & Style" icon="✍️" accentColor="#f97316">
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
@@ -557,7 +639,7 @@
                   </SectionCard>
                 )}
 
-                {/* 8. Anchor + Social Proof */}
+                {/* 8. Your Best Hook */}
                 {brief.anchor && (
                   <SectionCard title="Your Best Hook" icon="⚓" accentColor="#6366f1">
                     <div style={{ marginBottom: 16 }}>
@@ -581,13 +663,17 @@
 
     // ── App Shell ──────────────────────────────────────────────────────────────
     const App = () => {
-      const [session,   setSession]   = useState(undefined); // undefined = still checking
-      const [screen,    setScreen]    = useState("form");
-      const [inputs,    setInputs]    = useState(null);
-      const [briefData, setBriefData] = useState(null);
-      const [error,     setError]     = useState(null);
+      const [session,        setSession]        = useState(undefined); // undefined = still checking
+      const [profile,        setProfile]        = useState(null);
+      const [profileLoading, setProfileLoading] = useState(false);
+      const [history,        setHistory]        = useState([]);
+      const [screen,         setScreen]         = useState("form");
+      const [inputs,         setInputs]         = useState(null);
+      const [briefData,      setBriefData]      = useState(null);
+      const [activeBriefId,  setActiveBriefId]  = useState(null);
+      const [error,          setError]          = useState(null);
 
-      // Check for existing session on load + listen for auth changes (Google redirect, sign out, etc.)
+      // Auth state listener
       useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => setSession(session ?? null));
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -595,6 +681,25 @@
         });
         return () => subscription.unsubscribe();
       }, []);
+
+      // Load profile + history when session is available
+      useEffect(() => {
+        if (!session) { setProfile(null); setHistory([]); return; }
+        setProfileLoading(true);
+        supabase.from("profiles").select("*").eq("id", session.user.id).single()
+          .then(({ data }) => { setProfile(data); setProfileLoading(false); });
+      }, [session]);
+
+      // Load search history once profile is approved
+      useEffect(() => {
+        if (!profile?.approved || !session) return;
+        supabase.from("searches")
+          .select("id, name, company, created_at, inputs, brief")
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: false })
+          .limit(50)
+          .then(({ data }) => setHistory(data || []));
+      }, [profile]);
 
       const handleSubmit = async (formInputs) => {
         setInputs(formInputs);
@@ -614,6 +719,29 @@
           }
 
           const data = await res.json();
+
+          // Save to Supabase + increment count (fire and forget — don't block the UI)
+          const newCount = (profile?.search_count || 0) + 1;
+          Promise.all([
+            supabase.from("searches").insert({
+              user_id: session.user.id,
+              name: formInputs.name,
+              company: formInputs.company,
+              inputs: formInputs,
+              brief: data,
+            }).select("id, name, company, created_at, inputs, brief").single(),
+            supabase.from("profiles").update({
+              search_count: newCount,
+              last_seen_at: new Date().toISOString(),
+            }).eq("id", session.user.id),
+          ]).then(([{ data: newItem }]) => {
+            setProfile(p => ({ ...p, search_count: newCount }));
+            if (newItem) {
+              setHistory(prev => [newItem, ...prev]);
+              setActiveBriefId(newItem.id);
+            }
+          });
+
           setBriefData(data);
           setScreen("brief");
         } catch (err) {
@@ -621,18 +749,49 @@
         }
       };
 
-      // Still checking session — render nothing to avoid flash
-      if (session === undefined) return null;
+      const handleSelectSearch = (item) => {
+        setInputs(item.inputs);
+        setBriefData(item.brief);
+        setActiveBriefId(item.id);
+        setScreen("brief");
+      };
 
-      // Not logged in — show auth screen
+      const handleNewBrief = () => {
+        setBriefData(null);
+        setActiveBriefId(null);
+        setScreen("form");
+      };
+
+      // ── Render gates ──────────────────────────────────────────────────────────
+      if (session === undefined || profileLoading) return null; // silent splash
       if (!session) return <AuthScreen />;
+      if (!profile?.approved) return <PendingScreen />;
 
-      // Logged in — show the app
+      const searchCount = profile?.search_count || 0;
+      const limitReached = searchCount >= FREE_LIMIT;
+
+      // Loading screen is always full-width (no sidebar during generation)
+      if (screen === "loading") return <LoadingScreen error={error} />;
+
+      // Limit screen still shows history sidebar so users can re-read past briefs
+      if (limitReached && screen !== "brief") {
+        return <LimitScreen history={history} onSelectSearch={handleSelectSearch} />;
+      }
+
+      // Main layout: sidebar + content
       return (
-        <div>
-          {screen === "form"    && <FormScreen    onSubmit={handleSubmit} />}
-          {screen === "loading" && <LoadingScreen error={error} />}
-          {screen === "brief"   && briefData && <BriefScreen brief={briefData} inputs={inputs} onReset={() => { setBriefData(null); setScreen("form"); }} />}
+        <div style={{ display: "flex", minHeight: "100vh", background: "#080c14" }}>
+          <Sidebar
+            history={history}
+            onSelectSearch={handleSelectSearch}
+            onNewBrief={handleNewBrief}
+            activeId={activeBriefId}
+            searchCount={searchCount}
+          />
+          <div style={{ flex: 1, overflowY: "auto", minWidth: 0 }}>
+            {screen === "form"  && <FormScreen  onSubmit={handleSubmit} searchCount={searchCount} />}
+            {screen === "brief" && briefData && <BriefScreen brief={briefData} inputs={inputs} onReset={handleNewBrief} />}
+          </div>
         </div>
       );
     };
