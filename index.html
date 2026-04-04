@@ -7,6 +7,7 @@
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { background: #080c14; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     * { box-sizing: border-box; }
@@ -25,6 +26,12 @@
 
     // Change this to your Vercel URL once deployed, e.g. "https://meeting-prepper.vercel.app"
     const API_BASE = window.location.hostname === "localhost" ? "http://localhost:5001" : "";
+
+    // ── Supabase ───────────────────────────────────────────────────────────────
+    // Replace these two values with your own from Supabase → Settings → API
+    const SUPABASE_URL      = "https://tuyavpprivaxybzyuizy.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eWF2cHByaXZheHlienl1aXp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMTMwNDMsImV4cCI6MjA5MDg4OTA0M30.WurY5js3zkxldZF_yzfV0NdHNPcesUZLA98BoBgx3PQ";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const LOADING_STEPS = [
       "Scanning LinkedIn activity…",
@@ -66,6 +73,84 @@
         <div style={{ padding: "16px 20px" }}>{children}</div>
       </div>
     );
+
+    // ── Screen 0: Auth ─────────────────────────────────────────────────────────
+    const AuthScreen = () => {
+      const [mode,     setMode]     = useState("login");
+      const [email,    setEmail]    = useState("");
+      const [password, setPassword] = useState("");
+      const [loading,  setLoading]  = useState(false);
+      const [error,    setError]    = useState(null);
+      const [message,  setMessage]  = useState(null);
+
+      const inputStyle = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#e2e8f0", outline: "none", fontFamily: "inherit" };
+      const labelStyle = { fontSize: 11, fontWeight: 500, color: "#94a3b8", marginBottom: 6, display: "block" };
+
+      const handleEmailAuth = async () => {
+        setLoading(true); setError(null); setMessage(null);
+        const { error } = mode === "signup"
+          ? await supabase.auth.signUp({ email, password })
+          : await supabase.auth.signInWithPassword({ email, password });
+        if (error) setError(error.message);
+        else if (mode === "signup") setMessage("Check your email to confirm your account, then sign in.");
+        setLoading(false);
+      };
+
+      const handleGoogle = async () => {
+        await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: window.location.origin },
+        });
+      };
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#080c14", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 400 }}>
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, margin: "0 auto 16px" }}>🧠</div>
+              <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.03em", margin: "0 0 6px" }}>Meeting Prepper</h1>
+              <p style={{ fontSize: 13, color: "#475569", margin: 0 }}>{mode === "login" ? "Sign in to your account" : "Create your account"}</p>
+            </div>
+
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 24 }}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Email</label>
+                <input style={inputStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" onKeyDown={e => e.key === "Enter" && handleEmailAuth()} />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={labelStyle}>Password</label>
+                <input style={inputStyle} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && handleEmailAuth()} />
+              </div>
+
+              {error   && <p style={{ fontSize: 12, color: "#f87171", marginBottom: 14, margin: "0 0 14px" }}>{error}</p>}
+              {message && <p style={{ fontSize: 12, color: "#34d399", marginBottom: 14, margin: "0 0 14px" }}>{message}</p>}
+
+              <button onClick={handleEmailAuth} disabled={loading || !email || !password} style={{ width: "100%", padding: "13px 0", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: loading || !email || !password ? "default" : "pointer", background: loading || !email || !password ? "rgba(255,255,255,0.04)" : "#4f46e5", color: loading || !email || !password ? "#475569" : "#fff", border: loading || !email || !password ? "1px solid rgba(255,255,255,0.06)" : "none", marginBottom: 12, boxShadow: loading || !email || !password ? "none" : "0 4px 20px rgba(99,102,241,0.25)" }}>
+                {loading ? "Loading…" : mode === "login" ? "Sign in" : "Create account"}
+              </button>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
+                <span style={{ fontSize: 11, color: "#475569" }}>or</span>
+                <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
+              </div>
+
+              <button onClick={handleGoogle} style={{ width: "100%", padding: "13px 0", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", background: "rgba(255,255,255,0.04)", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                Continue with Google
+              </button>
+            </div>
+
+            <p style={{ textAlign: "center", fontSize: 12, color: "#475569", marginTop: 16 }}>
+              {mode === "login" ? "Don't have an account? " : "Already have an account? "}
+              <button onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(null); setMessage(null); }} style={{ background: "none", border: "none", color: "#a5b4fc", cursor: "pointer", fontSize: 12, fontWeight: 500, padding: 0 }}>
+                {mode === "login" ? "Sign up" : "Sign in"}
+              </button>
+            </p>
+          </div>
+        </div>
+      );
+    };
 
     // ── Screen 1: Form ─────────────────────────────────────────────────────────
     const FormScreen = ({ onSubmit }) => {
@@ -117,6 +202,7 @@
               <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧠</div>
               <span style={{ fontWeight: 700, color: "#fff", letterSpacing: "-0.02em", fontSize: 15 }}>Meeting Prepper</span>
             </div>
+            <button onClick={() => supabase.auth.signOut()} style={{ fontSize: 12, color: "#475569", background: "none", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>Sign out</button>
           </div>
 
           <div style={{ display: "flex", justifyContent: "center", padding: "40px 16px" }}>
@@ -291,6 +377,7 @@
                   <button key={v} onClick={() => setView(v)} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: "pointer", border: "none", background: view === v ? "rgba(99,102,241,0.2)" : "transparent", color: view === v ? "#a5b4fc" : "#64748b" }}>{l}</button>
                 ))}
               </div>
+              <button onClick={() => supabase.auth.signOut()} style={{ fontSize: 12, color: "#475569", background: "none", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>Sign out</button>
             </div>
           </div>
 
@@ -494,10 +581,20 @@
 
     // ── App Shell ──────────────────────────────────────────────────────────────
     const App = () => {
+      const [session,   setSession]   = useState(undefined); // undefined = still checking
       const [screen,    setScreen]    = useState("form");
       const [inputs,    setInputs]    = useState(null);
       const [briefData, setBriefData] = useState(null);
       const [error,     setError]     = useState(null);
+
+      // Check for existing session on load + listen for auth changes (Google redirect, sign out, etc.)
+      useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => setSession(session ?? null));
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          setSession(session ?? null);
+        });
+        return () => subscription.unsubscribe();
+      }, []);
 
       const handleSubmit = async (formInputs) => {
         setInputs(formInputs);
@@ -524,6 +621,13 @@
         }
       };
 
+      // Still checking session — render nothing to avoid flash
+      if (session === undefined) return null;
+
+      // Not logged in — show auth screen
+      if (!session) return <AuthScreen />;
+
+      // Logged in — show the app
       return (
         <div>
           {screen === "form"    && <FormScreen    onSubmit={handleSubmit} />}
